@@ -1,0 +1,175 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>マイクラ装備エメラルド変換</title>
+  <style>
+    body { font-family: sans-serif; padding: 1em; max-width: 600px; margin: auto; }
+    label { display: block; margin-top: 1em; }
+    input, select, button { width: 100%; padding: 0.5em; font-size: 1em; }
+    #result { margin-top: 2em; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>マイクラ装備エメラルド変換</h1>
+
+  <label for="category">カテゴリ</label>
+  <select id="category">
+    <option value="armor">防具</option>
+    <option value="tool">ツール</option>
+  </select>
+
+  <label id="materialLabel" for="material">素材</label>
+  <select id="material"></select>
+
+  <label id="typeLabel" for="type">種類</label>
+  <select id="type"></select>
+
+  <label for="durability">耐久値</label>
+  <input type="number" id="durability" min="1" max="2000" />
+
+  <div id="enchantGroup">
+    <div id="armorEnchant">
+      <label for="mending">修繕（最大1）</label>
+      <input type="number" id="mending" min="0" max="1" />
+      <label for="prot">ダメージ軽減（最大4）</label>
+      <input type="number" id="prot" min="0" max="4" />
+    </div>
+
+    <div id="swordEnchant">
+      <label for="mending">修繕（最大1）</label>
+      <input type="number" id="mendingSword" min="0" max="1" />
+      <label for="sharpness">ダメージ増加（最大5）</label>
+      <input type="number" id="sharpness" min="0" max="5" />
+    </div>
+
+    <div id="toolEnchant">
+      <label for="mending">修繕（最大1）</label>
+      <input type="number" id="mendingTool" min="0" max="1" />
+      <label for="efficiency">効率強化（最大5）</label>
+      <input type="number" id="efficiency" min="0" max="5" />
+      <label for="fortune">幸運（最大3）</label>
+      <input type="number" id="fortune" min="0" max="3" />
+    </div>
+  </div>
+
+  <button onclick="compute()">計算</button>
+
+  <div id="result"></div>
+
+  <script>
+    const armorMaterials = { "革": 3, "金": 10, "チェーン": 6, "鉄": 10 };
+    const armorTypes = { "ヘルメット": 6, "チェストプレート": 7, "レギンス": 6, "ブーツ": 5 };
+    const toolMaterials = { "金": 3, "木": 4, "石": 6, "鉄": 10 };
+    const toolTypes = { "ピッケル": 8, "シャベル": 8, "オノ": 8, "剣": 6, "くわ": 2 };
+
+    const armorDurabilityMap = {
+      "革": { "ヘルメット": 56, "チェストプレート": 81, "レギンス": 76, "ブーツ": 66 },
+      "金": { "ヘルメット": 78, "チェストプレート": 113, "レギンス": 106, "ブーツ": 92 },
+      "チェーン": { "ヘルメット": 166, "チェストプレート": 241, "レギンス": 226, "ブーツ": 196 },
+      "鉄": { "ヘルメット": 166, "チェストプレート": 241, "レギンス": 226, "ブーツ": 196 }
+    };
+
+    const toolDurabilityMap = { "木": 59, "石": 131, "鉄": 250, "金": 32 };
+
+    const categorySelect = document.getElementById("category");
+    const materialSelect = document.getElementById("material");
+    const typeSelect = document.getElementById("type");
+    const materialLabel = document.getElementById("materialLabel");
+    const typeLabel = document.getElementById("typeLabel");
+    const enchantGroup = document.getElementById("enchantGroup");
+    const armorEnchant = document.getElementById("armorEnchant");
+    const swordEnchant = document.getElementById("swordEnchant");
+    const toolEnchant = document.getElementById("toolEnchant");
+
+    function updateUI() {
+      const isArmor = categorySelect.value === "armor";
+      materialSelect.innerHTML = "";
+      typeSelect.innerHTML = "";
+
+      if (isArmor) {
+        Object.keys(armorMaterials).forEach(k => {
+          materialSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
+        });
+        Object.keys(armorTypes).forEach(k => {
+          typeSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
+        });
+        materialLabel.textContent = "防具素材";
+        typeLabel.textContent = "防具の種類";
+        enchantGroup.style.display = "block";
+        armorEnchant.style.display = "block";
+        swordEnchant.style.display = "none";
+        toolEnchant.style.display = "none";
+      } else {
+        Object.keys(toolMaterials).forEach(k => {
+          materialSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
+        });
+        Object.keys(toolTypes).forEach(k => {
+          typeSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
+        });
+        materialLabel.textContent = "ツール素材";
+        typeLabel.textContent = "ツールの種類";
+        enchantGroup.style.display = "block";
+
+        const toolType = typeSelect.value;
+        armorEnchant.style.display = "none";
+        swordEnchant.style.display = toolType === "剣" ? "block" : "none";
+        toolEnchant.style.display = toolType !== "剣" ? "block" : "none";
+      }
+
+      // 耐久値の自動設定
+      const mat = materialSelect.value;
+      const typ = typeSelect.value;
+      if (isArmor && armorDurabilityMap[mat] && armorDurabilityMap[mat][typ]) {
+        document.getElementById("durability").value = armorDurabilityMap[mat][typ];
+      } else if (!isArmor && toolDurabilityMap[mat]) {
+        document.getElementById("durability").value = toolDurabilityMap[mat];
+      }
+    }
+
+    materialSelect.addEventListener("change", updateUI);
+    typeSelect.addEventListener("change", updateUI);
+    categorySelect.addEventListener("change", updateUI);
+
+    function compute() {
+      const isArmor = categorySelect.value === "armor";
+      const material = materialSelect.value;
+      const type = typeSelect.value;
+      const durability = parseInt(document.getElementById("durability").value);
+
+      let baseValue = 0;
+      let enchantSum = 0;
+
+      if (isArmor) {
+        baseValue = armorMaterials[material] * armorTypes[type] * durability;
+        const mending = Math.max(0, parseInt(document.getElementById("mending").value));
+        const prot = Math.max(0, parseInt(document.getElementById("prot").value));
+        enchantSum = mending * 4 + prot * 1;
+      } else {
+        baseValue = toolMaterials[material] * toolTypes[type] * durability;
+
+        if (type === "剣") {
+          const mending = Math.max(0, parseInt(document.getElementById("mendingSword").value));
+          const sharpness = Math.max(0, parseInt(document.getElementById("sharpness").value));
+          enchantSum = mending * 4 + sharpness * 1;
+        } else {
+          const mending = Math.max(0, parseInt(document.getElementById("mendingTool").value));
+          const efficiency = Math.max(0, parseInt(document.getElementById("efficiency").value));
+          const fortune = Math.max(0, parseInt(document.getElementById("fortune").value));
+          enchantSum = mending * 4 + efficiency * 1 + fortune * 1;
+        }
+      }
+
+      if (enchantSum < 1) enchantSum = 1;
+      const p = baseValue + enchantSum * 2;
+      const emerald = Math.floor(p / 500);
+
+      document.getElementById("result").textContent = \`\${p}p → \${emerald}エメラルド\`;
+    }
+
+    window.onload = updateUI;
+  </script>
+</body>
+</html>
