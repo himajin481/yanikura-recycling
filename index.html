@@ -1,175 +1,197 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>マイクラ装備エメラルド変換</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>エメラルド換算ツール</title>
   <style>
-    body { font-family: sans-serif; padding: 1em; max-width: 600px; margin: auto; }
-    label { display: block; margin-top: 1em; }
-    input, select, button { width: 100%; padding: 0.5em; font-size: 1em; }
-    #result { margin-top: 2em; font-weight: bold; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+    label, select, input {
+      display: block;
+      margin: 10px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    input[type="number"], select {
+      padding: 8px;
+      font-size: 1em;
+    }
+    button {
+      padding: 10px;
+      font-size: 1em;
+      width: 100%;
+      margin-top: 10px;
+    }
+    #warning {
+      color: red;
+      margin-top: 10px;
+      white-space: pre-wrap;
+    }
+    #result {
+      margin-top: 20px;
+    }
+    @media (min-width: 600px) {
+      label, select, input, button {
+        max-width: 400px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>マイクラ装備エメラルド変換</h1>
+  <h1>エメラルド換算ツール</h1>
 
-  <label for="category">カテゴリ</label>
-  <select id="category">
-    <option value="armor">防具</option>
-    <option value="tool">ツール</option>
-  </select>
+  <label>
+    種別：
+    <select id="type" onchange="updateOptions()">
+      <option value="armor">防具</option>
+      <option value="tool">ツール</option>
+    </select>
+  </label>
 
-  <label id="materialLabel" for="material">素材</label>
-  <select id="material"></select>
+  <label>
+    種類：
+    <select id="itemType"></select>
+  </label>
 
-  <label id="typeLabel" for="type">種類</label>
-  <select id="type"></select>
+  <label>
+    素材：
+    <select id="material"></select>
+  </label>
 
-  <label for="durability">耐久値</label>
-  <input type="number" id="durability" min="1" max="2000" />
+  <label>
+    耐久値：
+    <input type="number" id="durability" value="1">
+  </label>
 
-  <div id="enchantGroup">
-    <div id="armorEnchant">
-      <label for="mending">修繕（最大1）</label>
-      <input type="number" id="mending" min="0" max="1" />
-      <label for="prot">ダメージ軽減（最大4）</label>
-      <input type="number" id="prot" min="0" max="4" />
-    </div>
+  <div id="enchantments"></div>
 
-    <div id="swordEnchant">
-      <label for="mending">修繕（最大1）</label>
-      <input type="number" id="mendingSword" min="0" max="1" />
-      <label for="sharpness">ダメージ増加（最大5）</label>
-      <input type="number" id="sharpness" min="0" max="5" />
-    </div>
-
-    <div id="toolEnchant">
-      <label for="mending">修繕（最大1）</label>
-      <input type="number" id="mendingTool" min="0" max="1" />
-      <label for="efficiency">効率強化（最大5）</label>
-      <input type="number" id="efficiency" min="0" max="5" />
-      <label for="fortune">幸運（最大3）</label>
-      <input type="number" id="fortune" min="0" max="3" />
-    </div>
-  </div>
-
-  <button onclick="compute()">計算</button>
-
-  <div id="result"></div>
+  <button onclick="calculate()">計算</button>
+  <div id="warning"></div>
+  <h2 id="result"></h2>
 
   <script>
-    const armorMaterials = { "革": 3, "金": 10, "チェーン": 6, "鉄": 10 };
-    const armorTypes = { "ヘルメット": 6, "チェストプレート": 7, "レギンス": 6, "ブーツ": 5 };
-    const toolMaterials = { "金": 3, "木": 4, "石": 6, "鉄": 10 };
-    const toolTypes = { "ピッケル": 8, "シャベル": 8, "オノ": 8, "剣": 6, "くわ": 2 };
-
-    const armorDurabilityMap = {
-      "革": { "ヘルメット": 56, "チェストプレート": 81, "レギンス": 76, "ブーツ": 66 },
-      "金": { "ヘルメット": 78, "チェストプレート": 113, "レギンス": 106, "ブーツ": 92 },
-      "チェーン": { "ヘルメット": 166, "チェストプレート": 241, "レギンス": 226, "ブーツ": 196 },
-      "鉄": { "ヘルメット": 166, "チェストプレート": 241, "レギンス": 226, "ブーツ": 196 }
+    const data = {
+      armor: {
+        materials: { "革": 3, "金": 10, "チェーン": 6, "鉄": 10 },
+        types: {
+          "ヘルメット": { value: 6, durability: { "革": 56, "金": 78, "チェーン": 166, "鉄": 166 } },
+          "チェストプレート": { value: 7, durability: { "革": 81, "金": 113, "チェーン": 241, "鉄": 241 } },
+          "レギンス": { value: 6, durability: { "革": 76, "金": 106, "チェーン": 226, "鉄": 226 } },
+          "ブーツ": { value: 5, durability: { "革": 66, "金": 92, "チェーン": 196, "鉄": 196 } }
+        }
+      },
+      tool: {
+        materials: { "金": 3, "木": 4, "石": 6, "鉄": 10 },
+        types: {
+          "ピッケル": 8, "シャベル": 8, "オノ": 8, "剣": 6, "くわ": 2
+        },
+        durability: { "木": 59, "石": 131, "鉄": 250, "金": 32 }
+      },
+      enchants: {
+        共通: ["修繕", "耐久力"],
+        防具: ["ダメージ軽減"],
+        剣: ["ダメージ増加"],
+        オノ: ["ダメージ増加", "効率強化", "幸運"],
+        その他ツール: ["効率強化", "幸運"]
+      }
     };
 
-    const toolDurabilityMap = { "木": 59, "石": 131, "鉄": 250, "金": 32 };
+    function updateOptions() {
+      const type = document.getElementById('type').value;
+      const itemTypeSelect = document.getElementById('itemType');
+      const materialSelect = document.getElementById('material');
 
-    const categorySelect = document.getElementById("category");
-    const materialSelect = document.getElementById("material");
-    const typeSelect = document.getElementById("type");
-    const materialLabel = document.getElementById("materialLabel");
-    const typeLabel = document.getElementById("typeLabel");
-    const enchantGroup = document.getElementById("enchantGroup");
-    const armorEnchant = document.getElementById("armorEnchant");
-    const swordEnchant = document.getElementById("swordEnchant");
-    const toolEnchant = document.getElementById("toolEnchant");
+      itemTypeSelect.innerHTML = '';
+      materialSelect.innerHTML = '';
 
-    function updateUI() {
-      const isArmor = categorySelect.value === "armor";
-      materialSelect.innerHTML = "";
-      typeSelect.innerHTML = "";
-
-      if (isArmor) {
-        Object.keys(armorMaterials).forEach(k => {
-          materialSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
-        });
-        Object.keys(armorTypes).forEach(k => {
-          typeSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
-        });
-        materialLabel.textContent = "防具素材";
-        typeLabel.textContent = "防具の種類";
-        enchantGroup.style.display = "block";
-        armorEnchant.style.display = "block";
-        swordEnchant.style.display = "none";
-        toolEnchant.style.display = "none";
-      } else {
-        Object.keys(toolMaterials).forEach(k => {
-          materialSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
-        });
-        Object.keys(toolTypes).forEach(k => {
-          typeSelect.innerHTML += `<option value="\${k}">\${k}</option>`;
-        });
-        materialLabel.textContent = "ツール素材";
-        typeLabel.textContent = "ツールの種類";
-        enchantGroup.style.display = "block";
-
-        const toolType = typeSelect.value;
-        armorEnchant.style.display = "none";
-        swordEnchant.style.display = toolType === "剣" ? "block" : "none";
-        toolEnchant.style.display = toolType !== "剣" ? "block" : "none";
+      const types = data[type].types;
+      for (let key in types) {
+        itemTypeSelect.innerHTML += `<option value="${key}">${key}</option>`;
       }
 
-      // 耐久値の自動設定
-      const mat = materialSelect.value;
-      const typ = typeSelect.value;
-      if (isArmor && armorDurabilityMap[mat] && armorDurabilityMap[mat][typ]) {
-        document.getElementById("durability").value = armorDurabilityMap[mat][typ];
-      } else if (!isArmor && toolDurabilityMap[mat]) {
-        document.getElementById("durability").value = toolDurabilityMap[mat];
+      const materials = data[type].materials;
+      for (let key in materials) {
+        materialSelect.innerHTML += `<option value="${key}">${key}</option>`;
       }
+
+      updateEnchantments();
     }
 
-    materialSelect.addEventListener("change", updateUI);
-    typeSelect.addEventListener("change", updateUI);
-    categorySelect.addEventListener("change", updateUI);
+    function updateEnchantments() {
+      const type = document.getElementById('type').value;
+      const itemType = document.getElementById('itemType').value;
+      const enchDiv = document.getElementById('enchantments');
+      enchDiv.innerHTML = '';
 
-    function compute() {
-      const isArmor = categorySelect.value === "armor";
-      const material = materialSelect.value;
-      const type = typeSelect.value;
-      const durability = parseInt(document.getElementById("durability").value);
+      let enchList = [...data.enchants.共通];
+      if (type === 'armor') enchList.push(...data.enchants.防具);
+      else if (itemType === '剣') enchList.push(...data.enchants.剣);
+      else if (itemType === 'オノ') enchList.push(...data.enchants.オノ);
+      else enchList.push(...data.enchants.その他ツール);
 
-      let baseValue = 0;
-      let enchantSum = 0;
+      enchList.forEach(name => {
+        enchDiv.innerHTML += `<label>${name} レベル: <input type="number" id="ench-${name}" min="0" value="0"></label>`;
+      });
+    }
 
-      if (isArmor) {
-        baseValue = armorMaterials[material] * armorTypes[type] * durability;
-        const mending = Math.max(0, parseInt(document.getElementById("mending").value));
-        const prot = Math.max(0, parseInt(document.getElementById("prot").value));
-        enchantSum = mending * 4 + prot * 1;
-      } else {
-        baseValue = toolMaterials[material] * toolTypes[type] * durability;
+    function getEnchValue(name, level) {
+      if (level < 1) return 0;
+      const limits = { "修繕": 1, "耐久力": 3, "ダメージ軽減": 4, "ダメージ増加": 5, "効率強化": 5, "幸運": 3 };
+      const factors = { "修繕": 4, "耐久力": 2, "ダメージ軽減": 1, "ダメージ増加": 1, "効率強化": 1, "幸運": 1 };
+      return Math.min(level, limits[name] || 0) * (factors[name] || 0);
+    }
 
-        if (type === "剣") {
-          const mending = Math.max(0, parseInt(document.getElementById("mendingSword").value));
-          const sharpness = Math.max(0, parseInt(document.getElementById("sharpness").value));
-          enchantSum = mending * 4 + sharpness * 1;
-        } else {
-          const mending = Math.max(0, parseInt(document.getElementById("mendingTool").value));
-          const efficiency = Math.max(0, parseInt(document.getElementById("efficiency").value));
-          const fortune = Math.max(0, parseInt(document.getElementById("fortune").value));
-          enchantSum = mending * 4 + efficiency * 1 + fortune * 1;
+    function calculate() {
+      const type = document.getElementById('type').value;
+      const itemType = document.getElementById('itemType').value;
+      const material = document.getElementById('material').value;
+      let durability = parseInt(document.getElementById('durability').value);
+      const warningDiv = document.getElementById('warning');
+      let warningMsg = '';
+
+      let enchSum = 0;
+      document.querySelectorAll('#enchantments input').forEach(input => {
+        const name = input.id.replace('ench-', '');
+        const level = parseInt(input.value);
+        const limits = { "修繕": 1, "耐久力": 3, "ダメージ軽減": 4, "ダメージ増加": 5, "効率強化": 5, "幸運": 3 };
+        if (limits[name] && level > limits[name]) {
+          warningMsg += `${name}エンチャントが限界値(${limits[name]})を超えています\n`;
         }
+        enchSum += getEnchValue(name, level);
+      });
+
+      let p = 0, maxDur = 0;
+      if (type === 'armor') {
+        const matVal = data.armor.materials[material];
+        const typeVal = data.armor.types[itemType].value;
+        maxDur = data.armor.types[itemType].durability[material];
+        if (durability > maxDur) {
+          warningMsg += `耐久値が限界値（${maxDur}）を超えています。そのため限界値で計算しています。\n`;
+          durability = maxDur;
+        }
+        p = (matVal * typeVal * durability) + (enchSum * 500);
+      } else {
+        const matVal = data.tool.materials[material];
+        const typeVal = data.tool.types[itemType];
+        maxDur = data.tool.durability[material];
+        if (durability > maxDur) {
+          warningMsg += `耐久値が限界値（${maxDur}）を超えています。そのため限界値で計算しています。\n`;
+          durability = maxDur;
+        }
+        p = (matVal * durability) + (typeVal * 100) + (enchSum * 500);
       }
 
-      if (enchantSum < 1) enchantSum = 1;
-      const p = baseValue + enchantSum * 2;
       const emerald = Math.floor(p / 500);
-
-      document.getElementById("result").textContent = \`\${p}p → \${emerald}エメラルド\`;
+      warningDiv.textContent = warningMsg.trim();
+      document.getElementById('result').textContent = `価値: ${p}p → ${emerald} エメラルド`;
     }
 
-    window.onload = updateUI;
+    document.getElementById('itemType').addEventListener('change', updateEnchantments);
+    window.onload = updateOptions;
   </script>
 </body>
 </html>
