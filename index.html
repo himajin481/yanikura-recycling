@@ -44,6 +44,14 @@
 <body>
   <h1>エメラルド換算ツール</h1>
 
+  <p>
+    防具計算式:<br>
+    (<strong>防具素材</strong> × <strong>防具種類</strong>) + (<strong>耐久値</strong> × 4) + (<strong>エンチャント合計</strong> × 500) = p<br>
+    ツール計算式:<br>
+    (<strong>ツール素材</strong> × <strong>ツール種類</strong>) + (<strong>耐久値</strong> × 4) + (<strong>エンチャント合計</strong> × 500) = p<br>
+    <strong>250p = 1エメラルド</strong>
+  </p>
+
   <label>
     種別：
     <select id="type" onchange="updateOptions()">
@@ -173,7 +181,7 @@
           warningMsg += `耐久値が限界値（${maxDur}）を超えています。そのため限界値で計算しています。\n`;
           durability = maxDur;
         }
-        p = (matVal * typeVal * durability) + (enchSum * 500);
+        p = (matVal * typeVal) + (durability * 4) + (enchSum * 500);
       } else {
         const matVal = data.tool.materials[material];
         const typeVal = data.tool.types[itemType];
@@ -182,10 +190,10 @@
           warningMsg += `耐久値が限界値（${maxDur}）を超えています。そのため限界値で計算しています。\n`;
           durability = maxDur;
         }
-        p = (matVal * durability) + (typeVal * 100) + (enchSum * 500);
+        p = (matVal * typeVal) + (durability * 4) + (enchSum * 500);
       }
 
-      const emerald = Math.floor(p / 500);
+      const emerald = Math.floor(p / 250);
       warningDiv.textContent = warningMsg.trim();
       document.getElementById('result').textContent = `価値: ${p}p → ${emerald} エメラルド`;
     }
